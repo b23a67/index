@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌈 彩虹找朋友</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Comic Sans MS", "微软雅黑", sans-serif;
+            background: linear-gradient(180deg, #87CEEB 0%, #F0F8FF 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 {
+            color: #FF69B4;
+            text-shadow: 2px 2px #FFB6C1;
+            font-size: 2.5rem;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .game-container {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 400px;
+            margin: 0 auto;
+        }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .color-card {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .color-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .color-card.flipped {
+            transform: rotateY(180deg);
+        }
+        .color-card.matched {
+            opacity: 0.6;
+            cursor: default;
+            transform: scale(0.9);
+        }
+        .score {
+            font-size: 1.5rem;
+            color: #4CAF50;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .reset-btn {
+            background: #FF69B4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 20px;
+        }
+        .reset-btn:hover {
+            background: #FF1493;
+        }
+        .win-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 100;
+        }
+        .win-message h2 {
+            color: #FF69B4;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌈 彩虹找朋友</h1>
+    <div class="game-container">
+        <div class="score">步数: <span id="steps">0</span></div>
+        <div class="color-grid" id="colorGrid"></div>
+        <button class="reset-btn" onclick="resetGame()">再玩一次</button>
+    </div>
+
+    <div class="win-message" id="winMessage">
+        <h2>🎉 太棒了！你找到所有彩虹朋友啦！</h2>
+        <button class="reset-btn" onclick="resetGame(); document.getElementById('winMessage').style.display='none';">再来一局</button>
+    </div>
+
+    <script>
+        const colors = [
+            { name: '🍎 红', value: '#FF6347' },
+            { name: '🍊 橙', value: '#FFA500' },
+            { name: '🍋 黄', value: '#FFD700' },
+            { name: '🍀 绿', value: '#32CD32' },
+            { name: '💙 蓝', value: '#1E90FF' },
+            { name: '🍇 紫', value: '#9370DB' },
+            { name: '🌸 粉', value: '#FF69B4' },
+            { name: '🐦 青', value: '#00CED1' }
+        ];
+
+        let cards = [...colors, ...colors];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let steps = 0;
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function initGame() {
+            const grid = document.getElementById('colorGrid');
+            grid.innerHTML = '';
+            cards = shuffle([...colors, ...colors]);
+            flippedCards = [];
+            matchedPairs = 0;
+            steps = 0;
+            document.getElementById('steps').textContent = steps;
+
+            cards.forEach((color, index) => {
+                const card = document.createElement('div');
+                card.className = 'color-card';
+                card.dataset.index = index;
+                card.style.backgroundColor = color.value;
+                card.textContent = '?';
+                card.addEventListener('click', flipCard);
+                grid.appendChild(card);
+            });
+        }
+
+        function flipCard(e) {
+            const card = e.target;
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            if (flippedCards.length === 2) return;
+
+            const index = parseInt(card.dataset.index);
+            const color = cards[index];
+            card.textContent = color.name;
+            card.classList.add('flipped');
+            flippedCards.push({ card, color });
+
+            if (flippedCards.length === 2) {
+                steps++;
+                document.getElementById('steps').textContent = steps;
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.color.value === card2.color.value) {
+                card1.card.classList.add('matched');
+                card2.card.classList.add('matched');
+                matchedPairs++;
+                flippedCards = [];
+                if (matchedPairs === colors.length) {
+                    setTimeout(() => {
+                        document.getElementById('winMessage').style.display = 'block';
+                    }, 500);
+                }
+            } else {
+                setTimeout(() => {
+                    card1.card.textContent = '?';
+                    card1.card.classList.remove('flipped');
+                    card2.card.textContent = '?';
+                    card2.card.classList.remove('flipped');
+                    flippedCards = [];
+                }, 1000);
+            }
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
